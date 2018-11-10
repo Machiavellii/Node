@@ -6,6 +6,7 @@ const _ = require('lodash');
 const { mongoose } = require('./db/mongoose');
 const { Todo } = require('./models/Todo');
 const { Users } = require('./models/Users');
+const { authenticated } = require('./middleware/authenticated');
 
 const app = express();
 
@@ -113,6 +114,14 @@ app.post('/users', (req, res) => {
     .catch(err => {
       res.send(err);
     });
+});
+
+app.get('/users/me', authenticated, (req, res) => {
+  res.send(req.user);
+});
+
+app.post('/users/login', (req, res) => {
+  const body = _.pick(req.body, ['email', 'password']);
 });
 
 app.listen(port, () => {
