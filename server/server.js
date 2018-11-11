@@ -14,9 +14,10 @@ const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
 
-app.post('/todos', (req, res) => {
+app.post('/todos', authenticated, (req, res) => {
   const newTodo = new Todo({
-    text: req.body.text
+    text: req.body.text,
+    _creator: req.user._id
   });
 
   newTodo
@@ -29,20 +30,25 @@ app.post('/todos', (req, res) => {
     });
 });
 
-app.get('/todos', (req, res) => {
-  Todo.find()
+app.get('/todos', authenticated, (req, res) => {
+  Todo.find({
+    _creator: req.user._id
+  })
     .then(todos => {
       res.send(todos);
     })
     .catch(err => console.log(err));
 });
 
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticated, (req, res) => {
   const id = req.params.id;
   if (!ObjectID.isValid(id)) {
     return res.status(404).send('Id do not exist');
   }
-  Todo.findById(id)
+  Todo.findOne({
+    _id: id,
+    _creator: req.user._id
+  })
     .then(todoId => {
       if (!todoId) {
         return res.status(404).send('Id not found');
@@ -54,12 +60,15 @@ app.get('/todos/:id', (req, res) => {
     });
 });
 
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticated, (req, res) => {
   const id = req.params.id;
   if (!ObjectID.isValid(id)) {
     return res.status(404).send('Id do not exist');
   }
-  Todo.findOneAndDelete(id)
+  Todo.findOneAndDelete({
+    _id: id,
+    _creator: req.user._id
+  })
     .then(todoId => {
       if (!todoId) {
         return res.status(404).send('Id not found');
@@ -71,7 +80,7 @@ app.delete('/todos/:id', (req, res) => {
     });
 });
 
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticated, (req, res) => {
   const id = req.params.id;
   const body = _.pick(req.body, ['text', 'completed']);
 
@@ -85,7 +94,14 @@ app.patch('/todos/:id', (req, res) => {
     (body.completed = false), (body.completedAt = null);
   }
 
-  Todo.findOneAndUpdate(id, { $set: body }, { new: true })
+  Todo.findOneAndUpdate(
+    {
+      _id: id,
+      _creator: req.user._id
+    },
+    { $set: body },
+    { new: true }
+  )
     .then(todo => {
       if (!todo) {
         return res.status(404).send();
@@ -98,7 +114,7 @@ app.patch('/todos/:id', (req, res) => {
     });
 });
 
-//Create User
+//CREATE USER
 app.post('/users', (req, res) => {
   const body = _.pick(req.body, ['email', 'password']);
   const newUser = new Users(body);
